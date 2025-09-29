@@ -7,12 +7,15 @@ import {
 import express from 'express';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 
 const serverDistFolder = dirname(fileURLToPath(import.meta.url));
 const browserDistFolder = resolve(serverDistFolder, '../browser');
 
 const app = express();
 const angularApp = new AngularNodeAppEngine();
+
+const backend = 'https://sulwork-cafe-backend-production.up.railway.app';
 
 /**
  * Example Express Rest API endpoints can be defined here.
@@ -48,6 +51,14 @@ app.use('/**', (req, res, next) => {
     )
     .catch(next);
 });
+
+app.use(
+  '/api',
+  createProxyMiddleware({
+    target: backend,
+    changeOrigin: true,
+  })
+);
 
 /**
  * Start the server if this module is the main entry point.

@@ -32,10 +32,10 @@ export class ApiService {
     createFullParticipant(payload: {
         name: string;
         cpf: string;
-        breakfastDate: string;              // yyyy-MM-dd
+        breakfastDate: string;
         items: { id: string; name: string; brought: boolean }[];
     }) {
-        return this.http.post('/api/participants', payload);
+        return this.http.post(`${this.base}/participants`, payload);
     }
 
     updateCollaborator(id: string | number, body: CreateCollaboratorBody): Observable<Participant> {
