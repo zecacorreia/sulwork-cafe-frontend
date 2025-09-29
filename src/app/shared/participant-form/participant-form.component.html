@@ -1,7 +1,7 @@
 <div class="rounded-xl bg-white animate-fade-in border border-gray-200">
     <div class="px-4 py-4 border-b border-gray-200">
         <div class="flex items-center gap-2 text-zinc-900">
-            <ng-container *ngIf="isEditing(); else addTpl">
+            <ng-container *ngIf="editingMode; else addTpl">
                 <lucide-icon name="edit-3" class="w-5 h-5"></lucide-icon>
                 <h3 class="font-semibold">Editar Participante</h3>
             </ng-container>
@@ -21,21 +21,25 @@
             </div>
 
             <div class="space-y-2">
-                <label for="cpf" class="text-sm font-medium">CPF</label>
-                <input id="cpf" type="text" formControlName="cpf" (input)="onCpfInput($event)" maxlength="14" placeholder="000.000.000-00" class="w-full rounded-lg border p-2 outline-none focus:ring focus:ring-indigo-200 [ &.ng-invalid.ng-touched ]:border-red-500" />
+                <div class="flex items-center gap-2">
+                    <label for="cpf" class="text-sm font-medium">CPF</label>
+                    <lucide-icon *ngIf="isEditing()" name="lock-keyhole" class="w-4 h-4 text-zinc-400" title="Não é possível alterar o CPF"></lucide-icon>
+                </div>
+                <input id="cpf" type="text" formControlName="cpf" (input)="onCpfInput($event)" maxlength="14" placeholder="000.000.000-00" class="w-full rounded-lg border p-2 outline-none focus:ring focus:ring-indigo-200 [ &.ng-invalid.ng-touched ]:border-red-500 disabled:bg-zinc-100 disabled:text-zinc-500 disabled:cursor-not-allowed" />
+                <p *ngIf="isEditing()" class="text-[0.75rem] text-zinc-500 font-medium">O CPF não pode ser alterado após o cadastro.</p>
                 <div *ngIf="form.get('cpf')?.invalid && form.get('cpf')?.touched" class="text-[0.75rem] text-red-700 font-semibold">
-                    <p *ngIf="form.get('cpf')?.hasError('required')">
-                        CPF é obrigatório.
-                    </p>
-                    <p *ngIf="!form.get('cpf')?.hasError('required') && form.get('cpf')?.hasError('cpf')">
-                        CPF inválido.
-                    </p>
+                    <p *ngIf="form.get('cpf')?.hasError('required')">CPF é obrigatório.</p>
+                    <p *ngIf="!form.get('cpf')?.hasError('required') && form.get('cpf')?.hasError('cpf')">CPF inválido.</p>
                 </div>
             </div>
 
             <div class="space-y-2">
-                <label for="breakfastDate" class="text-sm font-medium">Data do Café</label>
-                <input id="breakfastDate" type="date" formControlName="breakfastDate" class="w-full rounded-lg border p-2 outline-none focus:ring focus:ring-indigo-200 [ &.ng-invalid.ng-touched ]:border-red-500" />
+                <div class="flex items-center gap-2">
+                    <label for="breakfastDate" class="text-sm font-medium">Data do Café</label>
+                    <lucide-icon *ngIf="isEditing()" name="lock-keyhole" class="w-4 h-4 text-zinc-400" title="Não é possível alterar a data"></lucide-icon>
+                </div>
+                <input id="breakfastDate" type="date" formControlName="breakfastDate" class="w-full rounded-lg border p-2 outline-none focus:ring focus:ring-indigo-200 [ &.ng-invalid.ng-touched ]:border-red-500 disabled:bg-zinc-100 disabled:text-zinc-500 disabled:cursor-not-allowed" />
+                <p *ngIf="isEditing()" class="text-[0.75rem] text-zinc-500 font-medium">A data do café não pode ser alterada na edição.</p>
                 <p *ngIf="form.get('breakfastDate')?.touched && form.get('breakfastDate')?.errors?.['future']" class="text-[0.75rem] text-red-700 font-semibold">A data deve ser futura</p>
                 <p *ngIf="form.get('breakfastDate')?.touched && form.get('breakfastDate')?.errors?.['required']" class="text-[0.75rem] text-red-700 font-semibold">Data é obrigatória</p>
             </div>
@@ -63,14 +67,16 @@
                 <p *ngIf="form.get('items')?.errors?.['manual']" class="text-[0.75rem] text-red-700 font-semibold">{{ form.get('items')?.errors?.['manual'] }}</p>
             </div>
 
-            <div class="flex gap-3 flex-col md:justify-between md:flex-row-reverse md:items-end">
+            <div class="flex gap-3 flex-col md:flex-row-reverse md:items-end">
                 <button type="submit" class="rounded-lg text-white px-4 py-2 bg-blue-500 hover:bg-blue-600">
-                    {{ isEditing() ? 'Atualizar Participante' : 'Salvar Participante' }}
+                    {{ editingMode ? 'Atualizar Participante' : 'Salvar Participante' }}
                 </button>
 
-                <button *ngIf="isEditing()" type="button" (click)="onCancelClick()" class="rounded-xl border px-4 py-2 hover:bg-zinc-50">
+                <button *ngIf="editingMode" type="button" (click)="onCancelClick()" class="px-4 py-2 rounded-lg border border-blue-500 text-blue-500 hover:bg-zinc-100">
                     Cancelar
                 </button>
+            </div>
+            <div class="flex w-full items-center">
                 <p *ngIf="message()" class="text-[0.75rem] text-red-700 font-semibold">{{ errorMessage() }}</p>
                 <p *ngIf="successMessage()" class="text-[0.75rem] text-green-700 font-semibold">{{ successMessage() }}</p>
             </div>

@@ -22,6 +22,7 @@ export class ParticipantFormComponent implements OnChanges {
     errorMessage = signal<string>(''); 
     form: FormGroup;
     isEditing = computed(() => !!this.participant);
+    editingMode = false;
 
     constructor(private fb: FormBuilder) {
         this.form = this.fb.group({
@@ -48,30 +49,29 @@ export class ParticipantFormComponent implements OnChanges {
     }
 
     ngOnChanges(changes: SimpleChanges): void {
-        if (!changes['participant']) return;
+        this.editingMode = !!this.participant;
+
+        this.successMessage.set('');
+        this.errorMessage.set('');
+
+        this.items.clear();
 
         if (this.participant) {
-            this.successMessage.set('');
-            this.errorMessage.set('');
-
-            this.items.clear();
-            this.form.patchValue({
+        this.form.patchValue({
             name: this.participant.name ?? '',
             cpf: this.participant.cpf ?? '',
             breakfastDate: this.participant.breakfastDate ?? ''
-            });
-            this.form.get('name')?.enable();
-            this.form.get('cpf')?.disable();
-            this.form.get('breakfastDate')?.disable();
-            (this.participant.items ?? []).forEach(i => this.items.push(this.makeItemGroup(i)));
+        });
+        this.form.get('name')?.enable();
+        this.form.get('cpf')?.disable();
+        this.form.get('breakfastDate')?.disable();
+        (this.participant.items ?? []).forEach(i => this.items.push(this.makeItemGroup(i)));
         } else {
-            this.errorMessage.set('');
-            this.form.reset();
-            this.items.clear();
-            this.newItem.setValue('');
-            this.form.get('name')?.enable();
-            this.form.get('cpf')?.enable();
-            this.form.get('breakfastDate')?.enable();
+        this.form.reset();
+        this.newItem.setValue('');
+        this.form.get('name')?.enable();
+        this.form.get('cpf')?.enable();
+        this.form.get('breakfastDate')?.enable();
         }
     }
 

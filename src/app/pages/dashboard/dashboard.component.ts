@@ -45,7 +45,7 @@ export class DashboardComponent implements OnInit {
                     return of([]);
                 }
                 const requests = events.map(event => this.api.listItemsByDate(event.eventDate).pipe(
-                    catchError(() => of([])) // Se uma data falhar, retorna array vazio
+                    catchError(() => of([]))
                 ));
                 return forkJoin(requests);
             }),
@@ -93,20 +93,66 @@ export class DashboardComponent implements OnInit {
             next: () => {
             formComp.displaySuccess('created');
             this.editing.set(null);
-            this.loadAllParticipants(); // recarrega lista
+            this.loadAllParticipants();
             },
             error: (err) => formComp.displayError(err?.error?.detail || err?.error?.message || 'Erro ao criar.')
         });
     }
     
-    private updateParticipant(id: string | number, dataToUpdate: ParticipantCreate, formComp: ParticipantFormComponent) {
-        this.api.updateCollaborator(id, { name: dataToUpdate.name, cpf: dataToUpdate.cpf }).subscribe({
+    private updateParticipant(
+        id: string | number,
+        dataToUpdate: ParticipantCreate,
+        formComp: ParticipantFormComponent
+        ) {
+        const before = this.editing()!;
+        const after = dataToUpdate;
+
+        this.api.updateCollaborator(id, { name: after.name, cpf: after.cpf }).pipe(
+            switchMap(() => {
+            const beforeMap = new Map((before.items ?? []).map(i => [i.id, i]));
+            const afterMap  = new Map((after.items ?? []).map(i => [i.id, i]));
+
+            const deletions = [];
+            const renames   = [];
+            const additions = [];
+
+            // removidos e renomeados
+            for (const [oldId, oldItem] of beforeMap.entries()) {
+                const now = afterMap.get(oldId);
+                if (!now) {
+                deletions.push(oldId);
+                } else if (now.name.trim() !== oldItem.name.trim()) {
+                renames.push({ id: oldId, name: now.name.trim() });
+                }
+            }
+
+            for (const [newId, newItem] of afterMap.entries()) {
+                if (!beforeMap.has(newId)) {
+                additions.push({ name: newItem.name.trim() });
+                }
+            }
+
+            const calls = [
+                ...deletions.map(id => this.api.deleteItem(id)),
+                ...renames.map(r => this.api.updateItem(r.id, { itemName: r.name })),
+                ...additions.map(a =>
+                this.api.createItem({
+                    eventDate: before.breakfastDate,
+                    cpf: before.cpf,               
+                    itemName: a.name
+                })
+                )
+            ];
+
+            return calls.length ? forkJoin(calls) : of(null);
+            })
+        ).subscribe({
             next: () => {
-              formComp.displaySuccess('updated');
-              this.editing.set(null); 
-              this.loadAllParticipants(); 
+            formComp.displaySuccess('updated');
+            this.editing.set(null);
+            this.loadAllParticipants();
             },
-            error: (err) => formComp.displayError(err.error?.message || 'Erro ao atualizar.')
+            error: (err) => formComp.displayError(err.error?.message || 'Erro ao atualizar itens.')
         });
     }
 
@@ -114,7 +160,7 @@ export class DashboardComponent implements OnInit {
       this.api.deleteCollaborator(collaboratorId).subscribe({
           next: () => {
               console.log('Participante deletado!');
-              this.loadAllParticipants(); // <<< RECARREGA A LISTA
+              this.loadAllParticipants();
           },
           error: (err) => alert(err.error?.message || 'Erro ao deletar.')
       });
@@ -122,7 +168,7 @@ export class DashboardComponent implements OnInit {
 
     onUpdateItem(e: { itemId: string | number; brought: boolean }) {
       this.api.markItem(e.itemId, e.brought).subscribe({
-          next: () => this.loadAllParticipants(), // <<< RECARREGA A LISTA
+          next: () => this.loadAllParticipants(),
           error: (err) => console.error('Erro ao marcar item:', err)
       });
     }

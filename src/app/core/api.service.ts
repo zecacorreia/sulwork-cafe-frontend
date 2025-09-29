@@ -62,12 +62,20 @@ export class ApiService {
         return this.http.put<void>(`${this.base}/items/${itemId}`, body);
     }
 
+    deleteItem(itemId: string | number) {
+        return this.http.delete<void>(`${this.base}/items/${itemId}`);
+    }
+
     markItem(itemId: string | number, brought: boolean | null): Observable<{ id: string; brought: boolean }> {
         return this.http.patch<{ id: string; brought: boolean }>(`${this.base}/items/${itemId}/mark`, { brought });
     }
 
     listItemsByDate(date: string): Observable<ItemDTO[]> {
         return this.http.get<ItemDTO[]>(`${this.base}/items/by-date/${date}`);
+    }
+
+    listAllParticipants(): Observable<Participant[]> {
+        return this.http.get<Participant[]>(`${this.base}/participants`);
     }
 
     mapItemsToParticipants(items: ItemDTO[], date: string): Participant[] {
