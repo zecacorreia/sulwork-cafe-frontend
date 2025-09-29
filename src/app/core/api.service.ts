@@ -50,8 +50,11 @@ export class ApiService {
         return this.http.post<{ id: string; eventDate: string }>(`${this.base}/events`, body);
     }
 
-    listEvents(): Observable<{ id: number; eventDate: string }[]> {
-        return this.http.get<{ id: number; eventDate: string }[]>(`${this.base}/events`);
+    listEvents() {
+        return this.http.get<{ id: number; eventDate: string }[]>(
+            `${this.base}/events`,
+            { params: { _t: Date.now() } as any }
+        );
     }
 
     createItem(body: CreateItemBody): Observable<{ id: string; itemName: string }> {
@@ -70,8 +73,11 @@ export class ApiService {
         return this.http.patch<{ id: string; brought: boolean }>(`${this.base}/items/${itemId}/mark`, { brought });
     }
 
-    listItemsByDate(date: string): Observable<ItemDTO[]> {
-        return this.http.get<ItemDTO[]>(`${this.base}/items/by-date/${date}`);
+    listItemsByDate(date: string) {
+        return this.http.get<ItemDTO[]>(
+            `${this.base}/items/by-date/${date}`,
+            { params: { _t: Date.now() } as any }
+        );
     }
 
     listAllParticipants(): Observable<Participant[]> {

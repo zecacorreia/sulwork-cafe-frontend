@@ -1,5 +1,5 @@
-import { Component, OnInit, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, OnInit, PLATFORM_ID, signal } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Participant } from '../../shared/types';
 import { ParticipantFormComponent, ParticipantCreate } from '../../shared/participant-form/participant-form.component';
 import { ParticipantListComponent } from '../../shared/participant-list/participant-list.component';
@@ -20,6 +20,7 @@ import { catchError, forkJoin, of, switchMap, tap, throwError } from 'rxjs';
             </app-participant-form>
             <app-participant-list
                 [participants]="participants()"
+                [loading]="loading()" 
                 (edit)="editing.set($event)"
                 (delete)="onDelete($event)"
                 (updateItem)="onUpdateItem($event)">
@@ -30,15 +31,20 @@ import { catchError, forkJoin, of, switchMap, tap, throwError } from 'rxjs';
 export class DashboardComponent implements OnInit {
     participants = signal<Participant[]>([]);
     editing = signal<Participant | null>(null);
+    private platformId = inject(PLATFORM_ID);
+    loading = signal<boolean>(false);
 
     constructor(private api: ApiService) {}
 
     ngOnInit(): void {
-        this.loadAllParticipants();
+        if (isPlatformBrowser(this.platformId)) {
+            this.loadAllParticipants();
+        }
     }
 
     private loadAllParticipants() {
-        console.log('Buscando participantes do servidor...');
+        this.loading.set(true);
+
         this.api.listEvents().pipe(
             switchMap(events => {
                 if (!events || events.length === 0) {
@@ -72,9 +78,11 @@ export class DashboardComponent implements OnInit {
                 this.participants.set(participantsList);
             })
         ).subscribe({
-            error: (err) => {
+            next: () => this.loading.set(false),        
+            error: err => {
                 console.error('Erro ao carregar participantes:', err);
                 this.participants.set([]);
+                this.loading.set(false);               
             }
         });
     }
@@ -116,7 +124,6 @@ export class DashboardComponent implements OnInit {
             const renames   = [];
             const additions = [];
 
-            // removidos e renomeados
             for (const [oldId, oldItem] of beforeMap.entries()) {
                 const now = afterMap.get(oldId);
                 if (!now) {
@@ -157,19 +164,19 @@ export class DashboardComponent implements OnInit {
     }
 
     onDelete(collaboratorId: string | number) {
-      this.api.deleteCollaborator(collaboratorId).subscribe({
-          next: () => {
-              console.log('Participante deletado!');
-              this.loadAllParticipants();
-          },
-          error: (err) => alert(err.error?.message || 'Erro ao deletar.')
-      });
+        this.api.deleteCollaborator(collaboratorId).subscribe({
+            next: () => {
+                console.log('Participante deletado!');
+                this.loadAllParticipants();
+            },
+            error: (err) => alert(err.error?.message || 'Erro ao deletar.')
+        });
     }
 
     onUpdateItem(e: { itemId: string | number; brought: boolean }) {
-      this.api.markItem(e.itemId, e.brought).subscribe({
-          next: () => this.loadAllParticipants(),
-          error: (err) => console.error('Erro ao marcar item:', err)
-      });
+        this.api.markItem(e.itemId, e.brought).subscribe({
+            next: () => this.loadAllParticipants(),
+            error: (err) => console.error('Erro ao marcar item:', err)
+        });
     }
 }

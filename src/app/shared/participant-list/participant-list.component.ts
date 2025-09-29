@@ -1,6 +1,6 @@
-import { Component, Input, Output, EventEmitter, computed, signal } from '@angular/core';
+import { Component, Input, Output, EventEmitter, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LucideAngularModule, Calendar, Edit3, Trash2, User, CheckCircle, XCircle, Clock } from 'lucide-angular';
+import { LucideAngularModule } from 'lucide-angular';
 import { Participant, BreakfastItem } from '../types';
 
 @Component({
@@ -9,15 +9,31 @@ import { Participant, BreakfastItem } from '../types';
     imports: [CommonModule, LucideAngularModule],
     templateUrl: './participant-list.component.html'
 })
-
 export class ParticipantListComponent {
     @Input({ required: true }) participants: Participant[] = [];
+    @Input() loading = false;
 
     @Output() edit = new EventEmitter<Participant>();
     @Output() delete = new EventEmitter<string>();
     @Output() updateItem = new EventEmitter<{ participantId: string; itemId: string; brought: boolean }>();
 
-    today = new Date().toISOString().split('T')[0];
+    today: Date = new Date();
+
+    constructor() {
+        this.today.setHours(0, 0, 0, 0);
+    }
+
+    private toIsoLocal(d: Date): string {
+        const ms = d.getTime() - d.getTimezoneOffset() * 60000;
+        return new Date(ms).toISOString().split('T')[0];
+    }
+
+    get todayStr(): string {
+        return this.toIsoLocal(this.today);
+    }
+
+    isToday = (date: string): boolean => date === this.todayStr;
+    isPast  = (date: string): boolean => date < this.todayStr;
 
     private grouped = computed(() => {
         const groups: Record<string, Participant[]> = {};
@@ -30,10 +46,7 @@ export class ParticipantListComponent {
 
     sortedDates = computed(() => Object.keys(this.grouped()).sort());
 
-    isToday = (date: string) => date === this.today;
-    isPast  = (date: string) => date < this.today;
-
-    formatDate(dateString: string) {
+    formatDate(dateString: string): string {
         const date = new Date(dateString + 'T00:00:00');
         return date.toLocaleDateString('pt-BR', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
