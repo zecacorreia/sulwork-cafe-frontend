@@ -22,11 +22,4 @@ RUN npm ci --omit=dev
 # Copia artefatos de build
 COPY --from=build /app/dist ./dist
 
-# Porta: server.ts normalmente usa process.env.PORT || 4000
-ENV PORT=4000
-EXPOSE 4000
-
-# Se quiser apontar sua API no runtime:
-# ENV API_URL=https://sua-api.aqui
-
 CMD ["node", "dist/sulwork-cafe-web/server/server.mjs"]
