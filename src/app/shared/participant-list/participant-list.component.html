@@ -1,0 +1,81 @@
+<div *ngIf="participants.length === 0">
+    <div class="rounded-2xl bg-white border border-gray-200 shadow-sm p-8 flex flex-col items-center gap-2">
+        <lucide-icon name="calendar" class="w-12 h-12 text-zinc-400"></lucide-icon>
+        <h3 class="font-semibold text-lg text-zinc-900">Nenhum café agendado</h3>
+        <p class="text-zinc-600 text-center">Adicione o primeiro participante para começar a organizar os cafés da manhã.</p>
+    </div>
+</div>
+
+<div *ngIf="participants.length > 0" class="border border-gray-200 rounded-xl">
+    <div class="flex items-center gap-2 p-4 border-b border-gray-200">
+        <lucide-icon name="coffee" class="w-5 h-5 text-indigo-600"></lucide-icon>
+        <h3 class="font-semibold text-zinc-900">Próximos Cafés</h3>
+    </div>
+    <ng-container *ngFor="let date of sortedDates(); trackBy: trackDate">
+        <div class="space-y-4 animate-fade-in p-4">
+            <div class="flex items-center gap-3 pb-2 border-b border-gray-200">
+                <ng-container [ngSwitch]="getDateStatus(date).icon">
+                    <lucide-icon *ngSwitchCase="'clock'" name="clock" class="w-5 h-5" [ngClass]="getDateStatus(date).color"></lucide-icon>
+                    <lucide-icon *ngSwitchCase="'x-circle'" name="x-circle" class="w-5 h-5" [ngClass]="getDateStatus(date).color"></lucide-icon>
+                    <lucide-icon *ngSwitchDefault name="calendar" class="w-5 h-5" [ngClass]="getDateStatus(date).color"></lucide-icon>
+                </ng-container>
+
+                <h3 class="text-xl font-semibold text-zinc-900 capitalize">
+                    {{ formatDate(date) }}
+                </h3>
+
+                <span class="text-sm px-2 py-1 rounded-full font-semibold text-white" [ngClass]="getDateStatusBg(date).color">
+                    {{ getDateStatus(date).label }}
+                </span>
+            </div>
+
+            <div class="grid gap-4">
+                <div *ngFor="let participant of groupFor(date); trackBy: trackParticipant" class="rounded-2xl bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="p-6">
+                        <div class="flex items-start justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2 bg-indigo-50 rounded-lg">
+                                <lucide-icon name="user" class="w-5 h-5 text-indigo-600"></lucide-icon>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-zinc-900">{{ participant.name }}</h4>
+                                <p class="text-sm text-zinc-600">CPF: {{ participant.cpf }}</p>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2">
+                            <button type="button"
+                                    (click)="onEdit(participant)"
+                                    class="rounded-xl border px-3 py-2 hover:bg-zinc-100">
+                            <lucide-icon name="edit-3" class="w-4 h-4"></lucide-icon>
+                            </button>
+
+                            <button type="button"
+                                    (click)="onDelete(participant.id, participant.name)"
+                                    class="rounded-xl border px-3 py-2 hover:bg-red-50 text-red-600 border-red-200">
+                            <lucide-icon name="trash-2" class="w-4 h-4"></lucide-icon>
+                            </button>
+                        </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <h5 class="font-medium text-zinc-900">Itens que trará:</h5>
+                            <div class="space-y-2">
+                                <div *ngFor="let item of participant.items; trackBy: trackItem" class="flex items-center gap-3 p-3 rounded-lg transition-colors" [ngClass]="isToday(date) ? 'bg-indigo-50 border border-indigo-200' : 'bg-zinc-100'">
+                                    <input *ngIf="isToday(date)" type="checkbox" [checked]="item.brought" (change)="onItemToggle(participant.id, item.id, $any($event.target).checked)" class="size-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+
+                                    <span class="flex-1" [ngClass]="{'line-through text-zinc-500' : isPast(date) && !item.brought, 'text-emerald-700 font-medium' : item.brought, 'text-zinc-900' : !item.brought && !isPast(date)}">
+                                        {{ item.name }}
+                                    </span>
+
+                                    <lucide-icon *ngIf="item.brought" name="check-circle" class="w-4 h-4 text-emerald-600"></lucide-icon>
+                                    <lucide-icon *ngIf="isPast(date) && !item.brought" name="x-circle" class="w-4 h-4 text-red-600"></lucide-icon>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </ng-container>
+</div>

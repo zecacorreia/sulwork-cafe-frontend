@@ -1,9 +1,16 @@
-import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
+import { ApplicationConfig, provideZoneChangeDetection, importProvidersFrom } from '@angular/core';
 import { provideRouter } from '@angular/router';
-
 import { routes } from './app.routes';
-import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
+import { provideClientHydration } from '@angular/platform-browser';
+import { LucideAngularModule, Coffee, Edit3, UserPlus, Plus, X, Clock, Calendar, CheckCircle, XCircle, Trash2, User } from 'lucide-angular';
+import { provideHttpClient, withInterceptorsFromDi, withFetch } from '@angular/common/http';
 
 export const appConfig: ApplicationConfig = {
-  providers: [provideZoneChangeDetection({ eventCoalescing: true }), provideRouter(routes), provideClientHydration(withEventReplay())]
+  providers: [
+    provideZoneChangeDetection({ eventCoalescing: true }),
+    provideRouter(routes),
+    provideClientHydration(),
+    provideHttpClient(withInterceptorsFromDi(), withFetch()),
+    importProvidersFrom(LucideAngularModule.pick({ Coffee, Edit3, UserPlus, Plus, X, Clock, Calendar, CheckCircle, XCircle, Trash2, User }))
+  ]
 };

@@ -1,0 +1,129 @@
+import { Component, OnInit, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Participant } from '../../shared/types';
+import { ParticipantFormComponent, ParticipantCreate } from '../../shared/participant-form/participant-form.component';
+import { ParticipantListComponent } from '../../shared/participant-list/participant-list.component';
+import { ApiService } from '../../core/api.service';
+import { catchError, forkJoin, of, switchMap, tap, throwError } from 'rxjs';
+
+@Component({
+    selector: 'app-dashboard',
+    standalone: true,
+    imports: [CommonModule, ParticipantFormComponent, ParticipantListComponent],
+    template: `
+        <div class="max-w-5xl mx-auto p-4 grid md:grid-cols-2 gap-8 items-start">
+            <app-participant-form
+                #formComp                
+                [participant]="editing()"
+                (submitParticipant)="handleSubmit($event, formComp)"  
+                (cancel)="editing.set(null)">
+            </app-participant-form>
+            <app-participant-list
+                [participants]="participants()"
+                (edit)="editing.set($event)"
+                (delete)="onDelete($event)"
+                (updateItem)="onUpdateItem($event)">
+            </app-participant-list>
+        </div>
+    `
+})
+export class DashboardComponent implements OnInit {
+    participants = signal<Participant[]>([]);
+    editing = signal<Participant | null>(null);
+
+    constructor(private api: ApiService) {}
+
+    ngOnInit(): void {
+        this.loadAllParticipants();
+    }
+
+    private loadAllParticipants() {
+        console.log('Buscando participantes do servidor...');
+        this.api.listEvents().pipe(
+            switchMap(events => {
+                if (!events || events.length === 0) {
+                    return of([]);
+                }
+                const requests = events.map(event => this.api.listItemsByDate(event.eventDate).pipe(
+                    catchError(() => of([])) // Se uma data falhar, retorna array vazio
+                ));
+                return forkJoin(requests);
+            }),
+            tap(allItemsArrays => {
+                const allItems = allItemsArrays.flat();
+                if (allItems.length === 0) {
+                    this.participants.set([]);
+                    return;
+                }
+                const participantsList: Participant[] = [];
+                const itemsByDate = allItems.reduce((acc, item) => {
+                    const date = (item as any).eventDate;
+                    if (!acc[date]) acc[date] = [];
+                    acc[date].push(item);
+                    return acc;
+                }, {} as Record<string, any[]>);
+                
+                Object.keys(itemsByDate).forEach(date => {
+                    const participantsForDate = this.api.mapItemsToParticipants(itemsByDate[date], date);
+                    participantsList.push(...participantsForDate);
+                });
+                
+                console.log('Lista de participantes atualizada.', participantsList);
+                this.participants.set(participantsList);
+            })
+        ).subscribe({
+            error: (err) => {
+                console.error('Erro ao carregar participantes:', err);
+                this.participants.set([]);
+            }
+        });
+    }
+
+    handleSubmit(participantData: ParticipantCreate, formComp: ParticipantFormComponent) {
+        const participantBeingEdited = this.editing();
+        if (participantBeingEdited) {
+            this.updateParticipant(participantBeingEdited.id, participantData, formComp);
+        } else {
+            this.createParticipant(participantData, formComp);
+        }
+    }
+
+   private createParticipant(p: ParticipantCreate, formComp: ParticipantFormComponent) {
+        this.api.createFullParticipant(p).subscribe({
+            next: () => {
+            formComp.displaySuccess('created');
+            this.editing.set(null);
+            this.loadAllParticipants(); // recarrega lista
+            },
+            error: (err) => formComp.displayError(err?.error?.detail || err?.error?.message || 'Erro ao criar.')
+        });
+    }
+    
+    private updateParticipant(id: string | number, dataToUpdate: ParticipantCreate, formComp: ParticipantFormComponent) {
+        this.api.updateCollaborator(id, { name: dataToUpdate.name, cpf: dataToUpdate.cpf }).subscribe({
+            next: () => {
+              formComp.displaySuccess('updated');
+              this.editing.set(null); 
+              this.loadAllParticipants(); 
+            },
+            error: (err) => formComp.displayError(err.error?.message || 'Erro ao atualizar.')
+        });
+    }
+
+    onDelete(collaboratorId: string | number) {
+      this.api.deleteCollaborator(collaboratorId).subscribe({
+          next: () => {
+              console.log('Participante deletado!');
+              this.loadAllParticipants(); // <<< RECARREGA A LISTA
+          },
+          error: (err) => alert(err.error?.message || 'Erro ao deletar.')
+      });
+    }
+
+    onUpdateItem(e: { itemId: string | number; brought: boolean }) {
+      this.api.markItem(e.itemId, e.brought).subscribe({
+          next: () => this.loadAllParticipants(), // <<< RECARREGA A LISTA
+          error: (err) => console.error('Erro ao marcar item:', err)
+      });
+    }
+}
