@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AbstractControl, FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
@@ -26,7 +26,7 @@ export class ParticipantFormComponent implements OnChanges {
 
     isEditing = signal(false);
 
-    constructor(private fb: FormBuilder) {
+    constructor(private fb: FormBuilder, private cdr: ChangeDetectorRef) {
         this.form = this.fb.group({
             name: [''],
             cpf: [{ value: '', disabled: true }],
@@ -50,10 +50,22 @@ export class ParticipantFormComponent implements OnChanges {
         });
     }
 
+    public resetForm(): void {
+        this.form.reset();
+        this.newItem.setValue('');
+        this.form.setControl('items', this.fb.array([]));
+        this.isEditing.set(false);
+        
+        this.form.get('name')?.enable();
+        this.form.get('cpf')?.enable();
+        this.form.get('breakfastDate')?.enable();
+    }
+
     ngOnChanges(changes: SimpleChanges): void {
         this.isEditing.set(!!this.participant);
 
         if (this.participant) {
+            // MODO DE EDIÇÃO
             this.successMessage.set('');
             this.errorMessage.set('');
             this.form.patchValue({
@@ -61,20 +73,13 @@ export class ParticipantFormComponent implements OnChanges {
                 cpf: this.participant.cpf ?? '',
                 breakfastDate: this.participant.breakfastDate ?? ''
             });
-
             const itemControls = (this.participant.items ?? []).map(i => this.makeItemGroup(i));
-
             this.form.setControl('items', this.fb.array(itemControls));
             this.form.get('name')?.enable();
             this.form.get('cpf')?.disable();
             this.form.get('breakfastDate')?.disable();
-
         } else {
-            this.form.reset();
-            this.newItem.setValue('');
-            this.form.get('name')?.enable();
-            this.form.get('cpf')?.enable();
-            this.form.get('breakfastDate')?.enable();
+            this.resetForm();
         }
     }
 
@@ -117,10 +122,13 @@ export class ParticipantFormComponent implements OnChanges {
         this.items.push(this.makeItemGroup({ id: crypto.randomUUID(), name, brought: false }));
         this.newItem.setValue('');
         this.clearFieldError('items');
+
+        this.form.markAsDirty();
     }
 
     removeItem(idx: number) {
         this.items.removeAt(idx);
+        this.form.markAsDirty();
     }
 
     onSubmit() {
@@ -152,45 +160,42 @@ export class ParticipantFormComponent implements OnChanges {
         };
 
         this.submitParticipant.emit(payload); 
-        this.form.reset();
-        this.items.clear();
-        this.newItem.setValue('');
     }
 
-    public displaySuccess(mode: 'created' | 'updated' | 'deleted'): void {
-        if (this.successMessageTimer) {
-            clearTimeout(this.successMessageTimer);
-        }
+        public displaySuccess(mode: 'created' | 'updated' | 'deleted'): void {
+            if (this.successMessageTimer) {
+                clearTimeout(this.successMessageTimer);
+            }
+            let message = '';
+            if (mode === 'created') {
+                this.resetForm();
+                message = 'Participante adicionado com sucesso.';
+            } else if (mode === 'updated') {
+                message = 'Participante atualizado com sucesso.';
+            } else { 
+                message = 'Participante removido com sucesso.';
+            }
+            
+            this.successMessage.set(message);
+            this.successMessageTimer = setTimeout(() => {
+                this.successMessage.set('');
+                this.cdr.markForCheck();
+            }, 3000);
 
-        let message = '';
-
-        if (mode === 'created') {
-            this.form.reset();
-            this.items.clear();
-            this.newItem.setValue('');
-            message = 'Participante adicionado com sucesso.';
-        } else if (mode === 'updated') {
-            message = 'Participante atualizado com sucesso.';
-        } else { 
-            message = 'Participante removido com sucesso.';
+            this.cdr.markForCheck();
         }
-        
-        this.successMessage.set(message);
-        this.successMessageTimer = setTimeout(() => {
-            this.successMessage.set('');
-        }, 3000);
-    }
 
     public displayError(message: string): void {
         if (this.errorMessageTimer) {
             clearTimeout(this.errorMessageTimer);
         }
-
         this.errorMessage.set(message);
-
         this.errorMessageTimer = setTimeout(() => {
             this.errorMessage.set('');
+            this.cdr.markForCheck();
         }, 5000);
+
+        this.cdr.markForCheck();
     }
 
     onCancelClick() {
