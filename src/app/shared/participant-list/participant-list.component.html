@@ -13,9 +13,20 @@
         </div>
         <ng-container *ngFor="let date of sortedDates; trackBy: trackDate">
           <div class="space-y-4 animate-fade-in p-3 sm:p-4">
-            <div class="flex flex-col sm:flex-row sm:items-center gap-2 pb-2 border-b border-gray-200"></div>
+            <div class="flex flex-col sm:flex-row sm:items-center gap-2 pb-2 border-b border-gray-200">
+               <div class="flex items-center gap-2">
+                <ng-container [ngSwitch]="getDateStatus(date).icon">
+                    <lucide-icon *ngSwitchCase="'clock'" name="clock" class="w-5 h-5" [ngClass]="getDateStatus(date).color"></lucide-icon>
+                    <lucide-icon *ngSwitchCase="'x-circle'" name="x-circle" class="w-5 h-5" [ngClass]="getDateStatus(date).color"></lucide-icon>
+                    <lucide-icon *ngSwitchDefault name="calendar" class="w-5 h-5" [ngClass]="getDateStatus(date).color"></lucide-icon>
+                </ng-container>
+                <h3 class="text-lg sm:text-xl font-semibold text-zinc-900 capitalize">{{ formatDate(date) }}</h3>
+              </div>
+              <span class="inline-flex text-xs sm:text-sm px-2 py-0.5 sm:py-1 rounded-full font-semibold text-white w-max items-center justify-center" [ngClass]="getDateStatusBg(date).color">
+                {{ getDateStatus(date).label }}
+              </span>
+            </div>
             <div class="grid gap-4">
-
               <app-participant-card
                 *ngFor="let participant of groupFor(date); trackBy: trackParticipant"
                 [participant]="participant"
@@ -24,7 +35,7 @@
                 (delete)="onDelete($event)"
                 (updateItem)="onItemToggle($event)">
               </app-participant-card>
-              
+
             </div>
           </div>
         </ng-container>
