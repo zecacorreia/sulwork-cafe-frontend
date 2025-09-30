@@ -135,6 +135,7 @@ export class ParticipantFormComponent implements OnChanges {
             return;
         }
 
+
         const raw = this.form.getRawValue();
         const payload: ParticipantCreate = {
             name: raw.name!.trim(),

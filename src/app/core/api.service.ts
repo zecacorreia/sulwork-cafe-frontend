@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
-import { Observable } from 'rxjs';
+import { catchError, forkJoin, map, Observable, of, switchMap } from 'rxjs';
 import { Participant } from '../shared/types';
 
 interface CreateCollaboratorBody { name: string; cpf: string; }
@@ -118,5 +118,48 @@ export class ApiService {
         }
 
         return Array.from(participantsMap.values());
+    }
+
+    fetchAll$(): Observable<{
+        events: { id: number; eventDate: string }[];
+        itemsByDate: Record<string, ItemDTO[]>;
+        participants: Participant[];
+    }> {
+        return this.listEvents().pipe(
+        switchMap(events => {
+            if (!events || events.length === 0) {
+            return of({ events: [], itemsByDate: {}, participants: [] });
+            }
+
+            const calls = events.map(e =>
+            this.listItemsByDate(e.eventDate).pipe(catchError(() => of<ItemDTO[]>([])))
+            );
+
+            return forkJoin(calls).pipe(
+            map(itemsArrays => {
+                const itemsByDate: Record<string, ItemDTO[]> = {};
+                for (const arr of itemsArrays) {
+                    for (const it of arr) {
+                        const d = it.eventDate;
+                        (itemsByDate[d] ??= []).push(it);
+                    }
+                }
+
+                const participants: Participant[] = [];
+                for (const date of Object.keys(itemsByDate)) {
+                    participants.push(...this.mapItemsToParticipants(itemsByDate[date], date));
+                }
+
+                participants.sort(
+                (a, b) =>
+                    a.breakfastDate.localeCompare(b.breakfastDate) ||
+                    a.name.localeCompare(b.name)
+                );
+
+                return { events, itemsByDate, participants };
+                })
+                );
+            })
+        );
     }
 }
