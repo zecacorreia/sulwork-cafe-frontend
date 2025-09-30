@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, computed, signal } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AbstractControl, FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
@@ -20,9 +20,11 @@ export class ParticipantFormComponent implements OnChanges {
     newItem = new FormControl<string>('', { nonNullable: true });
     successMessage = signal<string>(''); 
     errorMessage = signal<string>(''); 
+    private successMessageTimer: any;
+    private errorMessageTimer: any;
     form: FormGroup;
-    isEditing = computed(() => !!this.participant);
-    editingMode = false;
+
+    isEditing = signal(false);
 
     constructor(private fb: FormBuilder) {
         this.form = this.fb.group({
@@ -49,29 +51,30 @@ export class ParticipantFormComponent implements OnChanges {
     }
 
     ngOnChanges(changes: SimpleChanges): void {
-        this.editingMode = !!this.participant;
-
-        this.successMessage.set('');
-        this.errorMessage.set('');
-
-        this.items.clear();
+        this.isEditing.set(!!this.participant);
 
         if (this.participant) {
-        this.form.patchValue({
-            name: this.participant.name ?? '',
-            cpf: this.participant.cpf ?? '',
-            breakfastDate: this.participant.breakfastDate ?? ''
-        });
-        this.form.get('name')?.enable();
-        this.form.get('cpf')?.disable();
-        this.form.get('breakfastDate')?.disable();
-        (this.participant.items ?? []).forEach(i => this.items.push(this.makeItemGroup(i)));
+            this.successMessage.set('');
+            this.errorMessage.set('');
+            this.form.patchValue({
+                name: this.participant.name ?? '',
+                cpf: this.participant.cpf ?? '',
+                breakfastDate: this.participant.breakfastDate ?? ''
+            });
+
+            const itemControls = (this.participant.items ?? []).map(i => this.makeItemGroup(i));
+
+            this.form.setControl('items', this.fb.array(itemControls));
+            this.form.get('name')?.enable();
+            this.form.get('cpf')?.disable();
+            this.form.get('breakfastDate')?.disable();
+
         } else {
-        this.form.reset();
-        this.newItem.setValue('');
-        this.form.get('name')?.enable();
-        this.form.get('cpf')?.enable();
-        this.form.get('breakfastDate')?.enable();
+            this.form.reset();
+            this.newItem.setValue('');
+            this.form.get('name')?.enable();
+            this.form.get('cpf')?.enable();
+            this.form.get('breakfastDate')?.enable();
         }
     }
 
@@ -148,26 +151,53 @@ export class ParticipantFormComponent implements OnChanges {
             }))
         };
 
-        this.submitParticipant.emit(payload);   
+        this.submitParticipant.emit(payload); 
+        this.form.reset();
+        this.items.clear();
+        this.newItem.setValue('');
     }
 
-    public displaySuccess(mode: 'created' | 'updated'): void {
+    public displaySuccess(mode: 'created' | 'updated' | 'deleted'): void {
+        if (this.successMessageTimer) {
+            clearTimeout(this.successMessageTimer);
+        }
+
+        let message = '';
+
         if (mode === 'created') {
             this.form.reset();
             this.items.clear();
             this.newItem.setValue('');
-            this.successMessage.set('Participante adicionado com sucesso.');
-        } else {
-            this.successMessage.set('Participante atualizado com sucesso.');
+            message = 'Participante adicionado com sucesso.';
+        } else if (mode === 'updated') {
+            message = 'Participante atualizado com sucesso.';
+        } else { 
+            message = 'Participante removido com sucesso.';
         }
+        
+        this.successMessage.set(message);
+        this.successMessageTimer = setTimeout(() => {
+            this.successMessage.set('');
+        }, 3000);
     }
 
     public displayError(message: string): void {
+        if (this.errorMessageTimer) {
+            clearTimeout(this.errorMessageTimer);
+        }
+
         this.errorMessage.set(message);
+
+        this.errorMessageTimer = setTimeout(() => {
+            this.errorMessage.set('');
+        }, 5000);
     }
 
     onCancelClick() {
         this.cancel.emit();
+        this.form.reset();
+        this.items.clear();
+        this.newItem.setValue('');
     }
 
     private setFieldError(field: string, message: string) {

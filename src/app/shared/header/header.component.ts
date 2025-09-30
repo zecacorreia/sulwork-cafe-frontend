@@ -27,17 +27,6 @@ import { LucideAngularModule } from 'lucide-angular';
               </p>
             </div>
           </a>
-
-          <!-- Ações (opcional) -->
-          <div class="flex items-center gap-2 sm:gap-3">
-            <!-- exemplo de botão de ação futuro
-            <button type="button"
-                    class="hidden sm:inline-flex items-center rounded-lg border px-3 py-2 text-sm hover:bg-zinc-50">
-              <lucide-icon name="coffee" class="w-4 h-4 mr-2"></lucide-icon>
-              Novo café
-            </button>
-            -->
-          </div>
         </div>
       </div>
     </header>

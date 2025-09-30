@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, PLATFORM_ID, signal } from '@angular/core';
+import { Component, inject, OnInit, PLATFORM_ID, signal, ViewChild } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Participant } from '../../shared/types';
 import { ParticipantFormComponent, ParticipantCreate } from '../../shared/participant-form/participant-form.component';
@@ -31,6 +31,8 @@ import { finalize } from 'rxjs/operators'; // <= garanta este import
   `
 })
 export class DashboardComponent implements OnInit {
+  @ViewChild('formComp') formComp!: ParticipantFormComponent;
+  
   participants = signal<Participant[]>([]);
   editing = signal<Participant | null>(null);
   loading = signal<boolean>(false);
@@ -44,7 +46,6 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  /** ÚNICO ponto de recarregar tudo do backend */
   private refresh() {
     this.loading.set(true);
     this.api.fetchAll$()
@@ -60,8 +61,7 @@ export class DashboardComponent implements OnInit {
 
   handleSubmit(data: ParticipantCreate, formComp: ParticipantFormComponent) {
     const editing = this.editing();
-    editing ? this.updateParticipant(editing.id, data, formComp)
-            : this.createParticipant(data, formComp);
+    editing ? this.updateParticipant(editing.id, data, formComp) : this.createParticipant(data, formComp);
   }
 
   private createParticipant(p: ParticipantCreate, formComp: ParticipantFormComponent) {
@@ -74,9 +74,10 @@ export class DashboardComponent implements OnInit {
       .subscribe({
         next: ({ participants }) => {
           this.participants.set(participants);
-          formComp.displaySuccess('created');
           this.editing.set(null);
+          formComp.displaySuccess('created'); 
         },
+
         error: (err) =>
           formComp.displayError(err?.error?.detail || err?.error?.message || 'Erro ao criar.')
       });
@@ -86,7 +87,6 @@ export class DashboardComponent implements OnInit {
     const before = this.editing()!;
     const after  = data;
 
-    // diff dos itens
     const beforeMap = new Map((before.items ?? []).map(i => [i.id, i]));
     const afterMap  = new Map((after.items ?? []).map(i => [i.id, i]));
 
@@ -111,45 +111,49 @@ export class DashboardComponent implements OnInit {
 
     this.loading.set(true);
     this.api.updateCollaborator(id, { name: after.name, cpf: after.cpf })
-      .pipe(
-        switchMap(() => calls.length ? forkJoin(calls) : of(null)),
-        switchMap(() => this.api.fetchAll$()),
-        finalize(() => this.loading.set(false))
-      )
-      .subscribe({
-        next: ({ participants }) => {
-          this.participants.set(participants);
-          formComp.displaySuccess('updated');
-          this.editing.set(null);
-        },
-        error: (err) =>
-          formComp.displayError(err?.error?.message || 'Erro ao atualizar itens.')
-      });
+    .pipe(
+      switchMap(() => calls.length ? forkJoin(calls) : of(null)),
+      switchMap(() => this.api.fetchAll$()),
+      finalize(() => this.loading.set(false))
+    )
+    .subscribe({
+      next: ({ participants }) => {
+        this.participants.set(participants);
+        this.editing.set(null);
+        formComp.displaySuccess('updated');
+      },
+
+      error: (err) =>
+        formComp.displayError(err?.error?.message || 'Erro ao atualizar itens.')
+    });
   }
 
   onDelete(collaboratorId: string | number) {
     this.loading.set(true);
     this.api.deleteCollaborator(collaboratorId)
-      .pipe(
-        switchMap(() => this.api.fetchAll$()),
-        finalize(() => this.loading.set(false))
-      )
-      .subscribe({
-        next: ({ participants }) => this.participants.set(participants),
-        error: (err) => alert(err?.error?.message || 'Erro ao deletar.')
-      });
+    .pipe(
+      switchMap(() => this.api.fetchAll$()),
+      finalize(() => this.loading.set(false))
+    )
+    .subscribe({
+      next: ({ participants }) => {
+          this.participants.set(participants);
+          this.formComp.displaySuccess('deleted');
+      },
+      error: (err) => this.formComp.displayError(err?.error?.message || 'Erro ao deletar.')
+    });
   }
 
   onUpdateItem(e: { itemId: string | number; brought: boolean }) {
     this.loading.set(true);
     this.api.markItem(e.itemId, e.brought)
-      .pipe(
-        switchMap(() => this.api.fetchAll$()),
-        finalize(() => this.loading.set(false))
-      )
-      .subscribe({
-        next: ({ participants }) => this.participants.set(participants),
-        error: (err) => console.error('Erro ao marcar item:', err)
-      });
+    .pipe(
+      switchMap(() => this.api.fetchAll$()),
+      finalize(() => this.loading.set(false))
+    )
+    .subscribe({
+      next: ({ participants }) => this.participants.set(participants),
+      error: (err) => console.error('Erro ao marcar item:', err)
+    });
   }
 }
